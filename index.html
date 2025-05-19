@@ -1,24 +1,92 @@
-<div class="container">
-  <header>
-    <img src="images/cover.jpg" class="cover-image" alt="청첩장 커버 이미지">
-    <h1>신상준 & 오경도</h1>
-    <p>2025년 4월 26일 토요일 오후 12시</p>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>변신랑 & 김신부 모바일 청첩장</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="cover">
+    <img src="image.jpg" alt="결혼 커버 이미지" class="cover-img" />
+    <div class="names">변신랑 ♥ 김신부</div>
+    <div class="date">2025년 9월 7일 (일) 오전 11시</div>
   </header>
 
-  <section class="wedding-info">
-    <h2>예식장 안내</h2>
-    <p>더 베뉴지 서울 2층 베뉴지홀</p>
+  <section class="greeting">
+    <h2>INVITATION</h2>
+    <p>
+      두 사람이 사랑으로 하나 되는 자리에 귀한 걸음 하시어<br />
+      축복해 주시면 감사하겠습니다.
+    </p>
   </section>
 
-  <section>
-    <h2>신랑 연락처</h2>
-    <p>신상준 : 010-xxxx-xxxx</p>
-    <button class="account-copy" onclick="copyText('groom-account')">계좌번호 복사</button>
-    <p id="groom-account" style="display:none">국민 45540201362604</p>
+  <section class="details">
+    <h2>예식 안내</h2>
+    <p><strong>일시:</strong> 2025년 9월 7일 (일) 오전 11시</p>
+    <p><strong>장소:</strong> 광화문 아펠가모</p>
   </section>
 
-  <section class="map-box">
+  <section class="accounts">
+    <h2>마음 전하실 곳</h2>
+    <div>
+      <p><strong>신랑 변신랑</strong><br />
+      농협 86370200000000 <button onclick="copyText('86370200000000')">복사</button></p>
+      <p><strong>신부 김신부</strong><br />
+      신한 91230299901234 <button onclick="copyText('91230299901234')">복사</button></p>
+    </div>
+  </section>
+
+  <section class="gallery">
+    <h2>GALLERY</h2>
+    <div class="gallery-grid">
+      <img src="images/photo1.jpg" alt="사진1" />
+      <img src="images/photo2.jpg" alt="사진2" />
+      <img src="images/photo3.jpg" alt="사진3" />
+    </div>
+  </section>
+
+  <section class="location">
     <h2>오시는 길</h2>
-    <iframe src="https://maps.google.com/... 삽입"></iframe>
+    <a href="https://m.place.naver.com/place/31738014/location?filter=location&selected_place_id=31738014" target="_blank">네이버 지도 보기</a>
   </section>
-</div>
+
+  <section class="guestbook">
+    <h2>방명록</h2>
+    <form id="guestbook-form">
+      <input type="text" placeholder="이름" required />
+      <textarea placeholder="축하 메시지를 남겨주세요" required></textarea>
+      <button type="submit">등록</button>
+    </form>
+    <div class="guestbook-entries"></div>
+  </section>
+
+  <footer>
+    <audio controls autoplay loop>
+      <source src="music.mp3" type="audio/mpeg" />
+      브라우저가 오디오를 지원하지 않습니다.
+    </audio>
+    <p>&copy; 변신랑 ♥ 김신부 모바일 청첩장</p>
+  </footer>
+
+  <script>
+    function copyText(text) {
+      navigator.clipboard.writeText(text).then(() => alert('계좌번호가 복사되었습니다.'));
+    }
+
+    const form = document.getElementById('guestbook-form');
+    const entries = document.querySelector('.guestbook-entries');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = form.querySelector('input').value;
+      const message = form.querySelector('textarea').value;
+      const entry = document.createElement('div');
+      entry.className = 'entry';
+      entry.innerHTML = `<strong>${name}</strong>: ${message}`;
+      entries.prepend(entry);
+      form.reset();
+    });
+  </script>
+</body>
+</html>
