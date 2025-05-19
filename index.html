@@ -70,23 +70,52 @@
   </footer>
 
   <script>
-    function copyText(text) {
-      navigator.clipboard.writeText(text).then(() => alert('계좌번호가 복사되었습니다.'));
+  function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => alert('계좌번호가 복사되었습니다.'));
+  }
+
+  const form = document.getElementById('guestbook-form');
+  const entries = document.querySelector('.guestbook-entries');
+
+  // 로컬스토리지에서 방명록 불러오기
+  function loadGuestbook() {
+    const saved = localStorage.getItem('guestbook');
+    if (saved) {
+      const data = JSON.parse(saved);
+      data.forEach(({ name, message }) => {
+        const entry = document.createElement('div');
+        entry.className = 'entry';
+        entry.innerHTML = `<strong>${name}</strong>: ${message}`;
+        entries.appendChild(entry);
+      });
     }
+  }
 
-    const form = document.getElementById('guestbook-form');
-    const entries = document.querySelector('.guestbook-entries');
+  // 방명록 저장
+  function saveGuestbookEntry(name, message) {
+    const saved = localStorage.getItem('guestbook');
+    const data = saved ? JSON.parse(saved) : [];
+    data.unshift({ name, message }); // 새 메시지를 위에 추가
+    localStorage.setItem('guestbook', JSON.stringify(data));
+  }
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = form.querySelector('input').value;
-      const message = form.querySelector('textarea').value;
-      const entry = document.createElement('div');
-      entry.className = 'entry';
-      entry.innerHTML = `<strong>${name}</strong>: ${message}`;
-      entries.prepend(entry);
-      form.reset();
-    });
-  </script>
+  // 폼 제출 처리
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = form.querySelector('input').value.trim();
+    const message = form.querySelector('textarea').value.trim();
+    if (!name || !message) return;
+
+    const entry = document.createElement('div');
+    entry.className = 'entry';
+    entry.innerHTML = `<strong>${name}</strong>: ${message}`;
+    entries.prepend(entry);
+    saveGuestbookEntry(name, message);
+    form.reset();
+  });
+
+  loadGuestbook();
+</script>
+
 </body>
 </html>
