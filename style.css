@@ -1,17 +1,93 @@
+/* 폰트 적용 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR&display=swap');
+
 body {
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: 'Noto Serif KR', serif;
+  background-color: #fdfdfd;
+  color: #444;
   margin: 0;
   padding: 0;
-  background-color: #fff;
-  color: #333;
+  line-height: 1.6;
 }
 
-section {
+/* 전체 레이아웃 */
+.container {
+  max-width: 640px;
+  margin: 0 auto;
   padding: 20px;
-  text-align: center;
 }
 
-img {
-  max-width: 100%;
-  height: auto;
+/* 섹션 스타일 */
+section {
+  margin-bottom: 40px;
+  padding: 20px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+}
+
+/* 헤더 */
+header {
+  text-align: center;
+  padding: 40px 20px 20px;
+}
+
+header h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+header p {
+  font-size: 18px;
+  color: #777;
+}
+
+/* 커버 이미지 */
+.cover-image {
+  width: 100%;
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+/* 예식 정보 */
+.wedding-info h2 {
+  font-size: 22px;
+  margin-bottom: 8px;
+  color: #b47c4e;
+}
+
+/* 계좌번호 복사 버튼 */
+.account-copy {
+  display: inline-block;
+  padding: 10px 16px;
+  margin-top: 8px;
+  background-color: #f2e8dc;
+  color: #333;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* 지도/교통 안내 */
+.map-box iframe {
+  width: 100%;
+  height: 300px;
+  border: none;
+  border-radius: 12px;
+}
+
+/* 반응형 처리 */
+@media screen and (max-width: 480px) {
+  body {
+    font-size: 15px;
+  }
+
+  header h1 {
+    font-size: 24px;
+  }
+
+  .account-copy {
+    font-size: 14px;
+  }
 }
