@@ -15,3 +15,8 @@ form.addEventListener('submit', (e) => {
   entries.prepend(entry);
   form.reset();
 });
+
+new Swiper(".mySwiper", {
+  loop: true,
+  pagination: { el: ".swiper-pagination" },
+});
