@@ -2,78 +2,72 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>변신랑 ♥ 김신부 모바일 청첩장</title>
-  <link rel="stylesheet" href="style.css"/>
-  <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"/>
 </head>
 <body>
+  <header class="cover">
+    <img src="images/cover.jpg" alt="커버이미지" />
+    <div class="names">변신랑 ♥ 김신부</div>
+    <div class="date">2025년 9월 7일 (일) 오전 11시</div>
+  </header>
 
-<header class="header">
-  <h1>변신랑 ♥ 김신부</h1>
-  <p>2025년 9월 7일 (일) 오전 11시</p>
-  <p>광화문 아펠가모</p>
-</header>
+  <section class="greeting">
+    <h2>초대합니다</h2>
+    <p>저희 두 사람이 새 출발을 시작하는 날<br>귀한 걸음으로 축복해주시면 감사하겠습니다.</p>
+  </section>
 
-<section class="cover">
-  <img src="images/cover.jpg" alt="커버 이미지" />
-</section>
+  <section class="details">
+    <h2>예식 안내</h2>
+    <p><strong>일시:</strong> 2025년 9월 7일 (일) 오전 11시</p>
+    <p><strong>장소:</strong> 광화문 아펠가모</p>
+  </section>
 
-<section class="invitation">
-  <h2>INVITATION</h2>
-  <p>두 사람이 사랑으로 하나 되는 자리에 귀한 걸음 하시어<br>축복해 주시면 감사하겠습니다.</p>
-</section>
-
-<section class="schedule">
-  <h2>예식 일정</h2>
-  <p>2025년 9월 7일 (일요일) 오전 11시</p>
-  <p>광화문 아펠가모</p>
-</section>
-
-<section class="accounts">
-  <h2>마음 전하실 곳</h2>
-  <div class="account-box">
-    <p><b>신랑 변신랑</b><br>농협 86370200000000 <button onclick="copyText('86370200000000')">복사</button></p>
-    <p><b>신부 김신부</b><br>신한 91230299901234 <button onclick="copyText('91230299901234')">복사</button></p>
-  </div>
-</section>
-
-<section class="map">
-  <h2>오시는 길</h2>
-  <a href="https://m.place.naver.com/place/31738014/location?filter=location&selected_place_id=31738014" target="_blank">네이버 지도 보기</a>
-</section>
-
-<section class="gallery">
-  <h2>갤러리</h2>
-  <div class="swiper mySwiper">
-    <div class="swiper-wrapper">
-      <div class="swiper-slide"><img src="images/photo1.jpg" alt=""></div>
-      <div class="swiper-slide"><img src="images/photo2.jpg" alt=""></div>
-      <div class="swiper-slide"><img src="images/photo3.jpg" alt=""></div>
+  <section class="accounts">
+    <h2>마음 전하실 곳</h2>
+    <div>
+      <p><strong>신랑 변신랑</strong> <br/> 농협 86370200000000 <button onclick="copyText('86370200000000')">복사</button></p>
+      <p><strong>신부 김신부</strong> <br/> 신한 91230299901234 <button onclick="copyText('91230299901234')">복사</button></p>
     </div>
-    <div class="swiper-pagination"></div>
-  </div>
-</section>
+  </section>
 
-<section class="guestbook">
-  <h2>방명록</h2>
-  <form id="guestbook-form">
-    <input type="text" placeholder="이름" required />
-    <textarea placeholder="메시지를 남겨주세요" required></textarea>
-    <button type="submit">등록</button>
-  </form>
-  <div class="guestbook-entries"></div>
-</section>
+  <section class="gallery">
+    <h2>GALLERY</h2>
+    <div class="swiper">
+      <div class="swiper-wrapper">
+        <div class="swiper-slide"><img src="images/gallery1.jpg" alt="사진1"></div>
+        <div class="swiper-slide"><img src="images/gallery2.jpg" alt="사진2"></div>
+        <div class="swiper-slide"><img src="images/gallery3.jpg" alt="사진3"></div>
+      </div>
+      <div class="swiper-pagination"></div>
+    </div>
+  </section>
 
-<footer>
-  <audio controls autoplay loop>
-    <source src="music/music.mp3" type="audio/mpeg"/>
-  </audio>
-  <p>© 변신랑 ♥ 김신부</p>
-</footer>
+  <section class="location">
+    <h2>오시는 길</h2>
+    <a href="https://m.place.naver.com/place/31738014/location?filter=location&selected_place_id=31738014" target="_blank">네이버 지도 보기</a>
+  </section>
 
-<script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
-<script src="script.js"></script>
+  <section class="guestbook">
+    <h2>방명록</h2>
+    <form id="guestbook-form">
+      <input type="text" placeholder="이름" required />
+      <textarea placeholder="메시지를 남겨주세요" required></textarea>
+      <button type="submit">등록</button>
+    </form>
+    <div class="guestbook-entries"></div>
+  </section>
+
+  <footer>
+    <audio controls autoplay loop>
+      <source src="music/bgm.mp3" type="audio/mpeg" />
+    </audio>
+    <p>&copy; 변신랑 ♥ 김신부 모바일 청첩장</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
