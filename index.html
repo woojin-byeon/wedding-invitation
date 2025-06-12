@@ -5,34 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>변신랑 ♥ 김신부 모바일 청첩장</title>
   <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo&display=swap" rel="stylesheet"/>
 </head>
 <body>
 
-<!-- 커버 -->
+<header class="header">
+  <h1>변신랑 ♥ 김신부</h1>
+  <p>2025년 9월 7일 (일) 오전 11시</p>
+  <p>광화문 아펠가모</p>
+</header>
+
 <section class="cover">
-  <img src="images/cover.jpg" alt="커버 이미지" class="cover-img" />
-  <div class="overlay">
-    <h1>변신랑 ♥ 김신부</h1>
-    <p>2025. 9. 7. 오전 11시</p>
-    <p>광화문 아펠가모</p>
-  </div>
+  <img src="images/cover.jpg" alt="커버 이미지" />
 </section>
 
-<!-- 초대글 -->
 <section class="invitation">
   <h2>INVITATION</h2>
   <p>두 사람이 사랑으로 하나 되는 자리에 귀한 걸음 하시어<br>축복해 주시면 감사하겠습니다.</p>
 </section>
 
-<!-- 일정 -->
 <section class="schedule">
   <h2>예식 일정</h2>
   <p>2025년 9월 7일 (일요일) 오전 11시</p>
   <p>광화문 아펠가모</p>
 </section>
 
-<!-- 계좌번호 -->
 <section class="accounts">
   <h2>마음 전하실 곳</h2>
   <div class="account-box">
@@ -41,23 +39,23 @@
   </div>
 </section>
 
-<!-- 지도 -->
-<section class="location">
+<section class="map">
   <h2>오시는 길</h2>
-  <iframe src="https://m.place.naver.com/place/31738014/location?filter=location&selected_place_id=31738014" width="100%" height="300" style="border:0;"></iframe>
+  <a href="https://m.place.naver.com/place/31738014/location?filter=location&selected_place_id=31738014" target="_blank">네이버 지도 보기</a>
 </section>
 
-<!-- 갤러리 -->
 <section class="gallery">
   <h2>갤러리</h2>
-  <div class="gallery-grid">
-    <img src="images/photo1.jpg" alt="">
-    <img src="images/photo2.jpg" alt="">
-    <img src="images/photo3.jpg" alt="">
+  <div class="swiper mySwiper">
+    <div class="swiper-wrapper">
+      <div class="swiper-slide"><img src="images/photo1.jpg" alt=""></div>
+      <div class="swiper-slide"><img src="images/photo2.jpg" alt=""></div>
+      <div class="swiper-slide"><img src="images/photo3.jpg" alt=""></div>
+    </div>
+    <div class="swiper-pagination"></div>
   </div>
 </section>
 
-<!-- 방명록 -->
 <section class="guestbook">
   <h2>방명록</h2>
   <form id="guestbook-form">
@@ -68,15 +66,14 @@
   <div class="guestbook-entries"></div>
 </section>
 
-<!-- 음악 -->
 <footer>
   <audio controls autoplay loop>
-    <source src="music.mp3" type="audio/mpeg"/>
+    <source src="music/music.mp3" type="audio/mpeg"/>
   </audio>
   <p>© 변신랑 ♥ 김신부</p>
 </footer>
 
+<script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
 <script src="script.js"></script>
-
 </body>
 </html>
