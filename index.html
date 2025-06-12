@@ -2,120 +2,81 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>변신랑 & 김신부 모바일 청첩장</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>변신랑 ♥ 김신부 모바일 청첩장</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo&display=swap" rel="stylesheet"/>
 </head>
 <body>
-  <header class="cover">
-    <img src="image.jpg" alt="결혼 커버 이미지" class="cover-img" />
-    <div class="names">변신랑 ♥ 김신부</div>
-    <div class="date">2025년 9월 7일 (일) 오전 11시</div>
-  </header>
 
-  <section class="greeting">
-    <h2>INVITATION</h2>
-    <p>
-      두 사람이 사랑으로 하나 되는 자리에 귀한 걸음 하시어<br />
-      축복해 주시면 감사하겠습니다.
-    </p>
-  </section>
+<!-- 커버 -->
+<section class="cover">
+  <img src="image.jpg" alt="커버 이미지" class="cover-img" />
+  <div class="overlay">
+    <h1>변신랑 ♥ 김신부</h1>
+    <p>2025. 9. 7. 오전 11시</p>
+    <p>광화문 아펠가모</p>
+  </div>
+</section>
 
-  <section class="details">
-    <h2>예식 안내</h2>
-    <p><strong>일시:</strong> 2025년 9월 7일 (일) 오전 11시</p>
-    <p><strong>장소:</strong> 광화문 아펠가모</p>
-  </section>
+<!-- 초대글 -->
+<section class="invitation">
+  <h2>INVITATION</h2>
+  <p>두 사람이 사랑으로 하나 되는 자리에 귀한 걸음 하시어<br>축복해 주시면 감사하겠습니다.</p>
+</section>
 
-  <section class="accounts">
-    <h2>마음 전하실 곳</h2>
-    <div>
-      <p><strong>신랑 변신랑</strong><br />
-      농협 86370200000000 <button onclick="copyText('86370200000000')">복사</button></p>
-      <p><strong>신부 김신부</strong><br />
-      신한 91230299901234 <button onclick="copyText('91230299901234')">복사</button></p>
-    </div>
-  </section>
+<!-- 일정 -->
+<section class="schedule">
+  <h2>예식 일정</h2>
+  <p>2025년 9월 7일 (일요일) 오전 11시</p>
+  <p>광화문 아펠가모</p>
+</section>
 
-  <section class="gallery">
-    <h2>GALLERY</h2>
-    <div class="gallery-grid">
-      <img src="images/photo1.jpg" alt="사진1" />
-      <img src="images/photo2.jpg" alt="사진2" />
-      <img src="images/photo3.jpg" alt="사진3" />
-    </div>
-  </section>
+<!-- 계좌번호 -->
+<section class="accounts">
+  <h2>마음 전하실 곳</h2>
+  <div class="account-box">
+    <p><b>신랑 변신랑</b><br>농협 86370200000000</p>
+    <p><b>신부 김신부</b><br>신한 91230299901234</p>
+  </div>
+</section>
 
-  <section class="location">
-    <h2>오시는 길</h2>
-    <a href="https://m.place.naver.com/place/31738014/location?filter=location&selected_place_id=31738014" target="_blank">네이버 지도 보기</a>
-  </section>
+<!-- 지도 -->
+<section class="location">
+  <h2>오시는 길</h2>
+  <iframe src="https://m.place.naver.com/place/31738014/location?filter=location&selected_place_id=31738014" width="100%" height="300" style="border:0;"></iframe>
+</section>
 
-  <section class="guestbook">
-    <h2>방명록</h2>
-    <form id="guestbook-form">
-      <input type="text" placeholder="이름" required />
-      <textarea placeholder="축하 메시지를 남겨주세요" required></textarea>
-      <button type="submit">등록</button>
-    </form>
-    <div class="guestbook-entries"></div>
-  </section>
+<!-- 갤러리 -->
+<section class="gallery">
+  <h2>갤러리</h2>
+  <div class="gallery-grid">
+    <img src="images/photo1.jpg" alt="">
+    <img src="images/photo2.jpg" alt="">
+    <img src="images/photo3.jpg" alt="">
+  </div>
+</section>
 
-  <footer>
-    <audio controls autoplay loop>
-      <source src="music.mp3" type="audio/mpeg" />
-      브라우저가 오디오를 지원하지 않습니다.
-    </audio>
-    <p>&copy; 변신랑 ♥ 김신부 모바일 청첩장</p>
-  </footer>
+<!-- 방명록 -->
+<section class="guestbook">
+  <h2>방명록</h2>
+  <form id="guestbook-form">
+    <input type="text" placeholder="이름" required />
+    <textarea placeholder="메시지를 남겨주세요" required></textarea>
+    <button type="submit">등록</button>
+  </form>
+  <div class="guestbook-entries"></div>
+</section>
 
-  <script>
-  function copyText(text) {
-    navigator.clipboard.writeText(text).then(() => alert('계좌번호가 복사되었습니다.'));
-  }
+<!-- 음악 -->
+<footer>
+  <audio controls autoplay loop>
+    <source src="music.mp3" type="audio/mpeg"/>
+  </audio>
+  <p>© 변신랑 ♥ 김신부</p>
+</footer>
 
-  const form = document.getElementById('guestbook-form');
-  const entries = document.querySelector('.guestbook-entries');
-
-  // 로컬스토리지에서 방명록 불러오기
-  function loadGuestbook() {
-    const saved = localStorage.getItem('guestbook');
-    if (saved) {
-      const data = JSON.parse(saved);
-      data.forEach(({ name, message }) => {
-        const entry = document.createElement('div');
-        entry.className = 'entry';
-        entry.innerHTML = `<strong>${name}</strong>: ${message}`;
-        entries.appendChild(entry);
-      });
-    }
-  }
-
-  // 방명록 저장
-  function saveGuestbookEntry(name, message) {
-    const saved = localStorage.getItem('guestbook');
-    const data = saved ? JSON.parse(saved) : [];
-    data.unshift({ name, message }); // 새 메시지를 위에 추가
-    localStorage.setItem('guestbook', JSON.stringify(data));
-  }
-
-  // 폼 제출 처리
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = form.querySelector('input').value.trim();
-    const message = form.querySelector('textarea').value.trim();
-    if (!name || !message) return;
-
-    const entry = document.createElement('div');
-    entry.className = 'entry';
-    entry.innerHTML = `<strong>${name}</strong>: ${message}`;
-    entries.prepend(entry);
-    saveGuestbookEntry(name, message);
-    form.reset();
-  });
-
-  loadGuestbook();
-</script>
+<script src="script.js"></script>
 
 </body>
 </html>
