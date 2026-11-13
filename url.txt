@@ -1,0 +1,64 @@
+bash-4.4$ cat playbooks/bcp/11.windows_ap_start.yml
+---
+####################################################################################################################
+# windows
+####################################################################################################################
+- name: "windows internal system"
+  hosts: "windows_ap"
+  gather_facts: no
+  serial: "100%"
+  any_errors_fatal: true
+
+  vars:
+    ansible_user: "quladm@PRUDENTIAL.CO.KR"
+  vars_files:
+    - "{{ playbook_dir }}/../../vars/dvcenter.yml"
+
+  tasks:
+    #- name: "[POWER] vm power on"
+    #  ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/bcp_vmware_vm_poweron.yml"
+    - name: "[CHECK] SSH status check"
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/bcp_vmware_windows_ssh_check.yml"
+      ignore_errors: yes
+    #- name: "[CHECK] keytab initializing win_ping connection check"
+    #  ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/bcp_windows_kinit_precheck.yml"
+    - name: "ignore test"
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/sequence/win_ipl_sequence_kinit_pok.yml"
+
+    - name: "[CHECK] SSH status check"
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/bcp_vmware_windows_ssh_check.yml"
+    #- ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/sequence/win_ipl_sequence_service_start.yml"
+    #- ansible.builtin.include_tasks: "{{ playbook_dir }}/../tasks/sequence/win_ipl_sequence_service_check.yml"
+bash-4.4$ ansible-playbook -i inventory/bcp/inventory.ini playbooks/bcp/11.windows_ap_start.yml
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+
+PLAY [windows internal system] **************************************************************************************
+
+TASK [[CHECK] SSH status check] *************************************************************************************
+included: /runner/playbooks/bcp/tasks/bcp_vmware_windows_ssh_check.yml for V_PINTAP03, pv-aut-web-01, pv-aut-web-02, V_pmisap01, V_pintap01, V_pozeap01, V_pozcap01, V_ITSM, ppccap01kb
+
+TASK [[BCP][SERVER] Wait WinRM port] ********************************************************************************
+ok: [V_pozeap01 -> localhost]
+ok: [V_pintap01 -> localhost]
+ok: [ppccap01kb -> localhost]
+ok: [V_pmisap01 -> localhost]
+ok: [pv-aut-web-01 -> localhost]
+ok: [V_PINTAP03 -> localhost]
+ok: [V_pozcap01 -> localhost]
+ok: [V_ITSM -> localhost]
+fatal: [pv-aut-web-02 -> localhost]: FAILED! => {"changed": false, "elapsed": 5, "msg": "Timeout when waiting for pv-aut-web-02.prudential.co.kr:5985"}
+
+NO MORE HOSTS LEFT **************************************************************************************************
+
+PLAY RECAP **********************************************************************************************************
+V_ITSM                     : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+V_PINTAP03                 : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+V_pintap01                 : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+V_pmisap01                 : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+V_pozcap01                 : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+V_pozeap01                 : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+ppccap01kb                 : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+pv-aut-web-01              : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+pv-aut-web-02              : ok=1    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0
+
+bash-4.4$
