@@ -1,0 +1,367 @@
+function Validate-ModuleAuthenticodeSignature
+{
+    [CmdletBinding()]
+    param
+    (
+        [Parameter(Mandatory=$true)]
+        $CurrentModuleInfo,
+
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $InstallLocation,
+
+        [Parameter()]
+        [Switch]
+        $IsUpdateOperation,
+
+        [Parameter()]
+        [Switch]
+        $SkipPublisherCheck
+    )
+
+    # Skip the publisher check when -SkipPublisherCheck is specified and
+    # it is not an update operation.
+    if(-not $IsUpdateOperation -and $SkipPublisherCheck)
+    {
+        $Message = $LocalizedData.SkippingPublisherCheck -f ($CurrentModuleInfo.Version, $CurrentModuleInfo.Name)
+        Write-Verbose -Message $message
+
+        return $true
+    }
+
+    $InstalledModuleDetails = $null
+    $InstalledModuleInfo = Test-ModuleInstalled -Name $CurrentModuleInfo.Name
+    if($InstalledModuleInfo)
+    {
+        $InstalledModuleDetails = Get-InstalledModuleAuthenticodeSignature -InstalledModuleInfo $InstalledModuleInfo `
+                                                                           -InstallLocation $InstallLocation
+    }
+
+    # Validate the catalog signature for the current module being installed.
+    $ev = $null
+    $CurrentModuleDetails = ValidateAndGet-AuthenticodeSignature -ModuleInfo $CurrentModuleInfo -ErrorVariable ev
+
+    if($ev)
+    {
+        Write-Debug "$ev"
+        return $false
+    }
+
+    if($InstalledModuleInfo)
+    {
+        $CurrentModuleAuthenticodePublisher = $null
+        $CurrentModuleRootCA = $null
+        $IsCurrentModuleSignedByMicrosoft = $false
+
+        if($CurrentModuleDetails)
+        {
+            $CurrentModuleAuthenticodePublisher = $CurrentModuleDetails.Publisher
+            $CurrentModuleRootCA = $CurrentModuleDetails.RootCertificateAuthority
+            $IsCurrentModuleSignedByMicrosoft = $CurrentModuleDetails.IsMicrosoftCertificate
+
+            $message = $LocalizedData.NewModuleVersionDetailsForPublisherValidation -f ($CurrentModuleInfo.Name,
+                                                                                        $CurrentModuleInfo.Version,
+                                                                                        $CurrentModuleDetails.Publisher,
+                                                                                        $CurrentModuleDetails.RootCertificateAuthority,
+                                                                                        $CurrentModuleDetails.IsMicrosoftCertificate)
+            Write-Verbose $message
+        }
+
+        $InstalledModuleAuthenticodePublisher = $null
+        $InstalledModuleRootCA = $null
+        $IsInstalledModuleSignedByMicrosoft = $false
+        $InstalledModuleVersion = [Version]'0.0'
+
+        if($InstalledModuleDetails)
+        {
+            $InstalledModuleAuthenticodePublisher = $InstalledModuleDetails.Publisher
+            $InstalledModuleRootCA = $InstalledModuleDetails.RootCertificateAuthority
+            $IsInstalledModuleSignedByMicrosoft = $InstalledModuleDetails.IsMicrosoftCertificate
+            $InstalledModuleVersion = $InstalledModuleDetails.Version
+
+            $message = $LocalizedData.SourceModuleDetailsForPublisherValidation -f ($CurrentModuleInfo.Name,
+                                                                                    $InstalledModuleDetails.Version,
+                                                                                    $InstalledModuleDetails.ModuleBase,
+                                                                                    $InstalledModuleDetails.Publisher,
+                                                                                    $InstalledModuleDetails.RootCertificateAuthority,
+                                                                                    $InstalledModuleDetails.IsMicrosoftCertificate)
+            Write-Verbose $message
+        }
+
+        Write-Debug -Message "Previously-installed module publisher: $InstalledModuleAuthenticodePublisher"
+        Write-Debug -Message "Current module publisher: $CurrentModuleAuthenticodePublisher"
+        Write-Debug -Message "Is previously-installed module signed by Microsoft: $IsInstalledModuleSignedByMicrosoft"
+        Write-Debug -Message "Is current module signed by Microsoft: $IsCurrentModuleSignedByMicrosoft"
+
+        if($InstalledModuleAuthenticodePublisher)
+        {
+            if(-not $CurrentModuleAuthenticodePublisher)
+            {
+                $Message = $LocalizedData.ModuleIsNotCatalogSigned -f ($CurrentModuleInfo.Version, $CurrentModuleInfo.Name, "$($CurrentModuleInfo.Name).cat", $InstalledModuleAuthenticodePublisher, $InstalledModuleDetails.Version, $InstalledModuleDetails.ModuleBase)
+                ThrowError -ExceptionName 'System.InvalidOperationException' `
+                            -ExceptionMessage $message `
+                            -ErrorId 'ModuleIsNotCatalogSigned' `
+                            -CallerPSCmdlet $PSCmdlet `
+                            -ErrorCategory InvalidOperation
+                return $false
+            }
+            elseif(($InstalledModuleAuthenticodePublisher -eq $CurrentModuleAuthenticodePublisher) -and
+                    $InstalledModuleRootCA -and $CurrentModuleRootCA -and 
+                    ($InstalledModuleRootCA -eq $CurrentModuleRootCA))
+            {
+                $Message = $LocalizedData.AuthenticodeIssuerMatch -f ($CurrentModuleAuthenticodePublisher, $CurrentModuleInfo.Name, $CurrentModuleInfo.Version, $InstalledModuleAuthenticodePublisher, $InstalledModuleInfo.Name, $InstalledModuleVersion)
+                Write-Verbose -Message $message
+            }
+            elseif($IsInstalledModuleSignedByMicrosoft)
+            {
+                if($IsCurrentModuleSignedByMicrosoft)
+                {
+                    $Message = $LocalizedData.PublishersMatch -f ($CurrentModuleAuthenticodePublisher, $CurrentModuleInfo.Name, $CurrentModuleInfo.Version, $InstalledModuleAuthenticodePublisher, $InstalledModuleInfo.Name, $InstalledModuleVersion)
+                    Write-Verbose -Message $message
+                }
+                else
+                {
+                    if (-not $script:WhitelistedModules.ContainsKey($CurrentModuleInfo.Name)) {
+                        $Message = $LocalizedData.PublishersMismatch -f ($InstalledModuleInfo.Name, $InstalledModuleVersion, $CurrentModuleInfo.Name, $CurrentModuleAuthenticodePublisher, $CurrentModuleInfo.Version)
+                        ThrowError -ExceptionName 'System.InvalidOperationException' `
+                                -ExceptionMessage $message `
+                                -ErrorId 'PublishersMismatch' `
+                                -CallerPSCmdlet $PSCmdlet `
+                                -ErrorCategory InvalidOperation
+
+                        return $false
+                    }
+
+                    $Message = $LocalizedData.PublishersMismatchAsWarning -f ($InstalledModuleInfo.Name, $InstalledModuleVersion, $InstalledModuleAuthenticodePublisher, $CurrentModuleInfo.Version, $CurrentModuleAuthenticodePublisher)
+                    Write-Warning $Message
+                    return $true
+                }
+            }
+            else
+            {
+                $Message = $LocalizedData.AuthenticodeIssuerMismatch -f ($CurrentModuleAuthenticodePublisher, $CurrentModuleInfo.Name, $CurrentModuleInfo.Version, $CurrentModuleRootCA, $InstalledModuleAuthenticodePublisher, $InstalledModuleInfo.Name, $InstalledModuleVersion, $InstalledModuleRootCA)
+                ThrowError -ExceptionName 'System.InvalidOperationException' `
+                            -ExceptionMessage $message `
+                            -ErrorId 'AuthenticodeIssuerMismatch' `
+                            -CallerPSCmdlet $PSCmdlet `
+                            -ErrorCategory InvalidOperation
+                return $false
+            }
+        }
+    }
+
+    return $true
+}
+# SIG # Begin signature block
+# MIInUgYJKoZIhvcNAQcCoIInQzCCJz8CAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCC0m4DGa+91gOIz
+# WhODI49tnq6UFTHk6+2Tc1a515vL2aCCDMkwggYEMIID7KADAgECAhMzAAACHPrN
+# xZvoL37EAAAAAAIcMA0GCSqGSIb3DQEBCwUAMFcxCzAJBgNVBAYTAlVTMR4wHAYD
+# VQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xKDAmBgNVBAMTH01pY3Jvc29mdCBD
+# b2RlIFNpZ25pbmcgUENBIDIwMjQwHhcNMjYwNDE2MTg1OTQxWhcNMjcwNDE1MTg1
+# OTQxWjB0MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UE
+# BxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMR4wHAYD
+# VQQDExVNaWNyb3NvZnQgQ29ycG9yYXRpb24wggEiMA0GCSqGSIb3DQEBAQUAA4IB
+# DwAwggEKAoIBAQDVsZfgOKmM31HPfoWOoNEiw0SlCiIxUMC0I9NMWbucKOw/e9lP
+# oAoehQVu6SG65V4EPzrYsnBnFPNoi4/HoOdjhz1qkrEt4I6tEcxXU6oOeY9zGveC
+# /3iBeuhLYxM3M/PkcUoebF+Nednm8OkdSPoDu8imViHPQq/8CQUu0WRR4rE+dMRf
+# rpVqfmNi2qWCX94T4MsepijGVkwE//tJg0ryAiYdHT34LSnlG/RSBZmQRGWZ5g8j
+# qnKjRParSqMft1gvjuUTVgtWNZfgcLFSK5Wa0myrq8OPcgTGGsRgun+tnSS+IxDT
+# xVsAPH1OzvPjwomguByhUe/OcvUN0D5Wmp7xAgMBAAGjggGqMIIBpjAOBgNVHQ8B
+# Af8EBAMCB4AwHwYDVR0lBBgwFgYKKwYBBAGCN0wIAQYIKwYBBQUHAwMwHQYDVR0O
+# BBYEFNoH7a2YDjOSwpkp6DHcmUS7J+0yMFQGA1UdEQRNMEukSTBHMS0wKwYDVQQL
+# EyRNaWNyb3NvZnQgSXJlbGFuZCBPcGVyYXRpb25zIExpbWl0ZWQxFjAUBgNVBAUT
+# DTIzMDAxMis1MDc1NjkwHwYDVR0jBBgwFoAUf1k/VCHarU/vBeXmo9ctBpQSCDEw
+# YAYDVR0fBFkwVzBVoFOgUYZPaHR0cDovL3d3dy5taWNyb3NvZnQuY29tL3BraW9w
+# cy9jcmwvTWljcm9zb2Z0JTIwQ29kZSUyMFNpZ25pbmclMjBQQ0ElMjAyMDI0LmNy
+# bDBtBggrBgEFBQcBAQRhMF8wXQYIKwYBBQUHMAKGUWh0dHA6Ly93d3cubWljcm9z
+# b2Z0LmNvbS9wa2lvcHMvY2VydHMvTWljcm9zb2Z0JTIwQ29kZSUyMFNpZ25pbmcl
+# MjBQQ0ElMjAyMDI0LmNydDAMBgNVHRMBAf8EAjAAMA0GCSqGSIb3DQEBCwUAA4IC
+# AQAUnEqhaRXe0T3hIJjvdQErEkrA/7bByjn6t5IArODkkRjzkYwtKMc2yYj2quaN
+# rLutWw2YZcngKPy1b71YyDJQTy4NDRwaSh9Tw5thrk3NmcPrAHia5vtcBJ1CgtKK
+# 7mQbIcQ22d/N3813ayCDDFewu1+jsZmX+r/aTEqaOM4TVxVtRSkuCy8nAXKuChOK
+# Li/zA4XuH8iEYqIsj2YoNaeSxVmeGiERXpKdo3dDmYi0kO5w2D8VS4c3+9h6gElY
+# BaAAg/dYErBg27qT3vv0zRDJhJufvCNylA8S7/+8H5E/PV5cng6na9VV/w9OV3qu
+# uND6zdGa2EX38Glp50F9AIQk3p2xXmcvorDeM4XJ7UlWYBi6g80J1SSOQnInCYFE
+# msfUNn3+1AaTJKSJL83quKArTac2pKhu0Yzzzrzo6HrsRiQKzpnRBb1/dMa6P3hz
+# 75XbMRBctNsFhZC07WCmjExdLg2eHW5uV0TY8D5+6wozJf7vF3+WHkYPO85Z+BC6
+# U4FkNbYNycZ9cE4j1tXRdyDCfml6c0HWPHjNVDObrv9lKt3qUqFpX38VCqVCyNOO
+# 1UcXfQiVjJw32U2WUKZjt/neJKHEBsm9kFsLuWzkQ53+qcaSaytmsCnk2gOglrlD
+# 5d3kKyvvAw+rzm0lT8K38P6PLxfZQHhu4W8dV7Av8N2ZmDCCBr0wggSloAMCAQIC
+# EzMAAAA5O7Y3Gb8GHWcAAAAAADkwDQYJKoZIhvcNAQEMBQAwgYgxCzAJBgNVBAYT
+# AlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYD
+# VQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xMjAwBgNVBAMTKU1pY3Jvc29mdCBS
+# b290IENlcnRpZmljYXRlIEF1dGhvcml0eSAyMDExMB4XDTI0MDgwODIwNTQxOFoX
+# DTM2MDMyMjIyMTMwNFowVzELMAkGA1UEBhMCVVMxHjAcBgNVBAoTFU1pY3Jvc29m
+# dCBDb3Jwb3JhdGlvbjEoMCYGA1UEAxMfTWljcm9zb2Z0IENvZGUgU2lnbmluZyBQ
+# Q0EgMjAyNDCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBANgBnB7jOMeq
+# lRYHNa265v4IY9fH8TKhemHfPINe1gpLaV3dhg324WwH06LcHbpnsBukCDNitryo
+# 0dtS/EW6I/yEL/bLSY8hKpbfQuWusBPr9qazYcDxCW/qnjb5JsI1s8bNOg3bVATv
+# QVL4tcf03aTycsz8QeCdM0l/yHRObJ9QqazM1r6VPEOJ7LL+uEEb73w6QCuhs89a
+# 1uv1zerOYMnsneRRwCbpyW11IcggU0cRKDDq1pjVJzIbIF6+oiXXbReOsgeI8zu1
+# FyQfK0fVkaya8SmVHQ/tOf23mZ4W9k0Ri22QW9p3UgSC5OUDktKxxcCmGL6tXLfO
+# GSWHIIV4YrTJTT6PNty5REojHJuZHArkF9VnHTERWoTjAzfI3kP+5b4alUdhgAZ7
+# ttOu1bVnXfHaqPYl2rPs20ji03LOVWsh/radgE17es5hL+t6lV0eVHrVhsssROWJ
+# uz2MXMCt7iw7lFPG9LXKGjsmonn2gotGdHIuEg5JnJMJVmixd5LRlkmgYRZKzhxS
+# CwyoGIq0PhaA7Y+VPct5pCHkijcIIDm0nlkK+0KyepolcqGm0T/GYQRMhHJlGOOm
+# VQop36wUVUYklUy++vDWeEgEo4s7hxN6mIbf2MSIQ/iIfMZgJxC69oukMUXCrOC3
+# SkE/xIkgpfl22MM1itkZ35nNXkMolU1lAgMBAAGjggFOMIIBSjAOBgNVHQ8BAf8E
+# BAMCAYYwEAYJKwYBBAGCNxUBBAMCAQAwHQYDVR0OBBYEFH9ZP1Qh2q1P7wXl5qPX
+# LQaUEggxMBkGCSsGAQQBgjcUAgQMHgoAUwB1AGIAQwBBMA8GA1UdEwEB/wQFMAMB
+# Af8wHwYDVR0jBBgwFoAUci06AjGQQ7kUBU7h6qfHMdEjiTQwWgYDVR0fBFMwUTBP
+# oE2gS4ZJaHR0cDovL2NybC5taWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMv
+# TWljUm9vQ2VyQXV0MjAxMV8yMDExXzAzXzIyLmNybDBeBggrBgEFBQcBAQRSMFAw
+# TgYIKwYBBQUHMAKGQmh0dHA6Ly93d3cubWljcm9zb2Z0LmNvbS9wa2kvY2VydHMv
+# TWljUm9vQ2VyQXV0MjAxMV8yMDExXzAzXzIyLmNydDANBgkqhkiG9w0BAQwFAAOC
+# AgEAFJQfOChP7onn6fLIMKrSlN1WYKwDFgAddymOUO3FrM8d7B/W/iQ6DxXsDn7D
+# 5W4wMwYeLystcEqfkjz4NURRgazyMu5yRzQh4LqjA4tStTcJh1opExo7nn5PuPBY
+# nbu0+THSuVHTe0VTTPVhily/piFrDo3axQ9P4C+Ol5yet+2gTfekICS5xS+cYfSI
+# vgn0JksVBVMYVI5QFu/qhnLhsEFEUzG8fvv0hjgkO+lkpV9ty6GkN4vdnd7ya6Q6
+# aR9y34aiM1qmxaxBi6OUnyNl6fkuun/diTFnYDLTppOkr/mg5WSfCiDVMNCxtj4w
+# PKC5OmHm1DQIt/MNokbbH3UGsFP1QbzsLocuSqLCvH09Io3fDPTmscR9Y75G4qX7
+# RTX8AdBPo0I6OEojf39zuFZt0qOHm65YWQE69cZM2ueE1MB05dNNgHK9gTE7zKvK
+# /fg8B2qjW88MT/WF5V5uvZGtqa9FSL2RazArA+rDPuf6JGYz4HpgMZHB4S6szWSK
+# YBv0VisCzfxgeU+dquXW9bd0auYlOB58DPcOYKdc3Se94g+xL4pcEhbB54JOgAkw
+# YTu/9dLeH2pDqeJZAABVDWRQCaXfO5LgyKwKCLYXpigrZYCjUSBcr+Ve8PFWMhVT
+# Ql0v4q8J/AUmQN5W4n101cY2L4A7GTQG1h32HHAvfQESWP0xghnfMIIZ2wIBATBu
+# MFcxCzAJBgNVBAYTAlVTMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24x
+# KDAmBgNVBAMTH01pY3Jvc29mdCBDb2RlIFNpZ25pbmcgUENBIDIwMjQCEzMAAAIc
+# +s3Fm+gvfsQAAAAAAhwwDQYJYIZIAWUDBAIBBQCggZAwGQYJKoZIhvcNAQkDMQwG
+# CisGAQQBgjcCAQQwLwYJKoZIhvcNAQkEMSIEIE07Mu0UIA2Ytu43NR9z5cEKcHFQ
+# B3GMVKQd4UbKl+1zMEIGCisGAQQBgjcCAQwxNDAyoBSAEgBNAGkAYwByAG8AcwBv
+# AGYAdKEagBhodHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20wDQYJKoZIhvcNAQEBBQAE
+# ggEANCNjFAB6cAD534hOXEV/duqYE6CDZl2fPoLbe+vnQEBYtRF5ziVykMs7nj4/
+# OvwOS8k10zSpOnJHl6xcoKgu8hhCYWGF4o1Li/dckPui+WiQR6U6cnPkgZrT+JPx
+# 8KcO3HrNSV+Mv7O/ceOHjM+GqImCL6NW+5OJ0ZtUxLOT9dBQlgTV3X29ox/OhjId
+# pohCeKjMdr6hKl7tGk47yGVfYjwS3QsXY6eKJQb2WEB1vdkp9eQUcHcwFWYXbwOR
+# 5+rl0UZtRW+EQgFfM+7Ty4ZzrZwkwggzeo/qezRRjGvmp8Y9ZIkHdD/dyUSRoXXl
+# tKsqpl+LdqZGB+H+P8Zk3yAWAqGCF68wgherBgorBgEEAYI3AwMBMYIXmzCCF5cG
+# CSqGSIb3DQEHAqCCF4gwgheEAgEDMQ8wDQYJYIZIAWUDBAIBBQAwggFaBgsqhkiG
+# 9w0BCRABBKCCAUkEggFFMIIBQQIBAQYKKwYBBAGEWQoDATAxMA0GCWCGSAFlAwQC
+# AQUABCAi0+ytd5+wdV4wom0LqBFN5BYWcs3a6Mr1MX6jPb1obgIGavNMmvuiGBMy
+# MDI2MTExMDIyMDUxNi4xNDlaMASAAgH0oIHZpIHWMIHTMQswCQYDVQQGEwJVUzET
+# MBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMV
+# TWljcm9zb2Z0IENvcnBvcmF0aW9uMS0wKwYDVQQLEyRNaWNyb3NvZnQgSXJlbGFu
+# ZCBPcGVyYXRpb25zIExpbWl0ZWQxJzAlBgNVBAsTHm5TaGllbGQgVFNTIEVTTjo0
+# QzFBLTA1RTAtRDk0NzElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2Vy
+# dmljZaCCEf0wggcoMIIFEKADAgECAhMzAAACNFOhZ5ThvBhHAAEAAAI0MA0GCSqG
+# SIb3DQEBCwUAMHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAw
+# DgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24x
+# JjAkBgNVBAMTHU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwMB4XDTI2MTAx
+# NTE4Mzc0MVoXDTI4MDExMTE4Mzc0MVowgdMxCzAJBgNVBAYTAlVTMRMwEQYDVQQI
+# EwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdSZWRtb25kMR4wHAYDVQQKExVNaWNyb3Nv
+# ZnQgQ29ycG9yYXRpb24xLTArBgNVBAsTJE1pY3Jvc29mdCBJcmVsYW5kIE9wZXJh
+# dGlvbnMgTGltaXRlZDEnMCUGA1UECxMeblNoaWVsZCBUU1MgRVNOOjRDMUEtMDVF
+# MC1EOTQ3MSUwIwYDVQQDExxNaWNyb3NvZnQgVGltZS1TdGFtcCBTZXJ2aWNlMIIC
+# IjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAv1DlGvKZ5zYjHEFIq54AmeMU
+# 93V3X2VTcxZ/BySJkMeKI8A9cHBMguy13bQX0VOzrw0R+GACXfqJ/C1Dnpxel0w8
+# WZXI5oUKBA1raFhDUSranmSJsskUdJOGz2t+kZujCSYVqOSmJusZWFgOgrR3kG1n
+# T9TO0EtYboO5CAPFPsqxeTe7M6oEZ84I/YRHW0al878rKouB1L+QOyTw9NOBjVqg
+# nsd3kikvb6Md8eLc5VW2gs7sSkjQkhMz6JAA1K7lOQH9zBzRJeyspelEPvIDr/Hq
+# Kf3ix/2Iu6bU69r0AgfSElK48scRLppB+4owC3+QeQHoa4Zb6bXy8ypGbRotszgH
+# A1Ye8/X4OAAzTiAEilwh9feW4Sgl0Be95TCf5KqCfmb2rx+R/swujTRWBrDdcXTr
+# p+P8gdPRueTTgrTvdGibOQteP0baOYOYLE1fG1MQaH8Qea+h5rf7XuTmTRp2LD//
+# ufdTRLwa8znQTSzVTVoQsBmeEAriPYdMUTErc4gr6b5t9jcEjFNsDbZvXjqwxOal
+# eW6rIZo8+a0MXGrd2IxZTIdnmcctt7c/BVk25br29mAxazFs2hWGc1Wird/XWl7r
+# ghV1iUjPav9MVSc08AcVVeowpSvEUB/NsxAowa3Dy2EEOdASK/HkL5Pyi/EfT5Nx
+# zdi19bgcVhHW6tCHpEcCAwEAAaOCAUkwggFFMB0GA1UdDgQWBBQExeMDLdFhgBUU
+# I0xj7MaM+LlVAjAfBgNVHSMEGDAWgBSfpxVdAF5iXYP05dJlpxtTNRnpcjBfBgNV
+# HR8EWDBWMFSgUqBQhk5odHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vcGtpb3BzL2Ny
+# bC9NaWNyb3NvZnQlMjBUaW1lLVN0YW1wJTIwUENBJTIwMjAxMCgxKS5jcmwwbAYI
+# KwYBBQUHAQEEYDBeMFwGCCsGAQUFBzAChlBodHRwOi8vd3d3Lm1pY3Jvc29mdC5j
+# b20vcGtpb3BzL2NlcnRzL01pY3Jvc29mdCUyMFRpbWUtU3RhbXAlMjBQQ0ElMjAy
+# MDEwKDEpLmNydDAMBgNVHRMBAf8EAjAAMBYGA1UdJQEB/wQMMAoGCCsGAQUFBwMI
+# MA4GA1UdDwEB/wQEAwIHgDANBgkqhkiG9w0BAQsFAAOCAgEAknSqLDWke2i0f9l0
+# YZ/VZUIQwMHqHGx+/oqKh6sjR5oMibSwrIgth02kGQv2pnpKuF3nDxPM1XR3+MjE
+# tgO9WUIr25rvPZM93FPnLtbevOkqkBNvcp3dUBEDmzx3FuKgJoeCay6OXL1bgP0B
+# qfYlIbWyKmqez6z8o5UvjPUYI8K1jyr42d7OqyPThBPJUsTOKG8ggT9mWj46YxKX
+# xmUt4BujofSh0XKQEnrtiDRMzrGzkYV8JniewBsyWgoYqcUJOqtLyBu0EsIbHejM
+# rlPVb8o2XyD8wb271tjId8PzvLVrhrfFt7MZtgSVQ3oxDYqsg41j/D8qmHJg5NLs
+# 9Zlj6Z/7o1WYkZuqvLpsd6kwan7MxX729J15uE6A2ErbeuEitTaXmxtQRujS2DR6
+# YSm5GIlPsGU6So8hBlrcnCFm5cfbwAHEWxLxNaGhwJjF+leTjyDbna3QHrq+p7z8
+# yIsCw/ae4+LwUE8wbX8nSKnHg8536pWa0ovRZMPl/iu4H35e/MurwgXxquXnaYIW
+# 9JxUOz6Db0KPGzzZAIcTFdppllplQ5ZMhvS+r6sMoQWqNpmZW4ziu6l7bcr1qFyL
+# JdQzjBFvsmS95/ii13++kUhBbzyZrw8M98C3HQ9wtyNVlfmTEZKMsGqW1IlzwHzV
+# YQFF5GWxBT1TckeNoyz7JfeP8z8wggdxMIIFWaADAgECAhMzAAAAFcXna54Cm0mZ
+# AAAAAAAVMA0GCSqGSIb3DQEBCwUAMIGIMQswCQYDVQQGEwJVUzETMBEGA1UECBMK
+# V2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0
+# IENvcnBvcmF0aW9uMTIwMAYDVQQDEylNaWNyb3NvZnQgUm9vdCBDZXJ0aWZpY2F0
+# ZSBBdXRob3JpdHkgMjAxMDAeFw0yMTA5MzAxODIyMjVaFw0zMDA5MzAxODMyMjVa
+# MHwxCzAJBgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMRAwDgYDVQQHEwdS
+# ZWRtb25kMR4wHAYDVQQKExVNaWNyb3NvZnQgQ29ycG9yYXRpb24xJjAkBgNVBAMT
+# HU1pY3Jvc29mdCBUaW1lLVN0YW1wIFBDQSAyMDEwMIICIjANBgkqhkiG9w0BAQEF
+# AAOCAg8AMIICCgKCAgEA5OGmTOe0ciELeaLL1yR5vQ7VgtP97pwHB9KpbE51yMo1
+# V/YBf2xK4OK9uT4XYDP/XE/HZveVU3Fa4n5KWv64NmeFRiMMtY0Tz3cywBAY6GB9
+# alKDRLemjkZrBxTzxXb1hlDcwUTIcVxRMTegCjhuje3XD9gmU3w5YQJ6xKr9cmmv
+# Haus9ja+NSZk2pg7uhp7M62AW36MEBydUv626GIl3GoPz130/o5Tz9bshVZN7928
+# jaTjkY+yOSxRnOlwaQ3KNi1wjjHINSi947SHJMPgyY9+tVSP3PoFVZhtaDuaRr3t
+# pK56KTesy+uDRedGbsoy1cCGMFxPLOJiss254o2I5JasAUq7vnGpF1tnYN74kpEe
+# HT39IM9zfUGaRnXNxF803RKJ1v2lIH1+/NmeRd+2ci/bfV+AutuqfjbsNkz2K26o
+# ElHovwUDo9Fzpk03dJQcNIIP8BDyt0cY7afomXw/TNuvXsLz1dhzPUNOwTM5TI4C
+# vEJoLhDqhFFG4tG9ahhaYQFzymeiXtcodgLiMxhy16cg8ML6EgrXY28MyTZki1ug
+# poMhXV8wdJGUlNi5UPkLiWHzNgY1GIRH29wb0f2y1BzFa/ZcUlFdEtsluq9QBXps
+# xREdcu+N+VLEhReTwDwV2xo3xwgVGD94q0W29R6HXtqPnhZyacaue7e3PmriLq0C
+# AwEAAaOCAd0wggHZMBIGCSsGAQQBgjcVAQQFAgMBAAEwIwYJKwYBBAGCNxUCBBYE
+# FCqnUv5kxJq+gpE8RjUpzxD/LwTuMB0GA1UdDgQWBBSfpxVdAF5iXYP05dJlpxtT
+# NRnpcjBcBgNVHSAEVTBTMFEGDCsGAQQBgjdMg30BATBBMD8GCCsGAQUFBwIBFjNo
+# dHRwOi8vd3d3Lm1pY3Jvc29mdC5jb20vcGtpb3BzL0RvY3MvUmVwb3NpdG9yeS5o
+# dG0wEwYDVR0lBAwwCgYIKwYBBQUHAwgwGQYJKwYBBAGCNxQCBAweCgBTAHUAYgBD
+# AEEwCwYDVR0PBAQDAgGGMA8GA1UdEwEB/wQFMAMBAf8wHwYDVR0jBBgwFoAU1fZW
+# y4/oolxiaNE9lJBb186aGMQwVgYDVR0fBE8wTTBLoEmgR4ZFaHR0cDovL2NybC5t
+# aWNyb3NvZnQuY29tL3BraS9jcmwvcHJvZHVjdHMvTWljUm9vQ2VyQXV0XzIwMTAt
+# MDYtMjMuY3JsMFoGCCsGAQUFBwEBBE4wTDBKBggrBgEFBQcwAoY+aHR0cDovL3d3
+# dy5taWNyb3NvZnQuY29tL3BraS9jZXJ0cy9NaWNSb29DZXJBdXRfMjAxMC0wNi0y
+# My5jcnQwDQYJKoZIhvcNAQELBQADggIBAJ1VffwqreEsH2cBMSRb4Z5yS/ypb+pc
+# FLY+TkdkeLEGk5c9MTO1OdfCcTY/2mRsfNB1OW27DzHkwo/7bNGhlBgi7ulmZzpT
+# Td2YurYeeNg2LpypglYAA7AFvonoaeC6Ce5732pvvinLbtg/SHUB2RjebYIM9W0j
+# VOR4U3UkV7ndn/OOPcbzaN9l9qRWqveVtihVJ9AkvUCgvxm2EhIRXT0n4ECWOKz3
+# +SmJw7wXsFSFQrP8DJ6LGYnn8AtqgcKBGUIZUnWKNsIdw2FzLixre24/LAl4FOmR
+# sqlb30mjdAy87JGA0j3mSj5mO0+7hvoyGtmW9I/2kQH2zsZ0/fZMcm8Qq3UwxTSw
+# ethQ/gpY3UA8x1RtnWN0SCyxTkctwRQEcb9k+SS+c23Kjgm9swFXSVRk2XPXfx5b
+# RAGOWhmRaw2fpCjcZxkoJLo4S5pu+yFUa2pFEUep8beuyOiJXk+d0tBMdrVXVAmx
+# aQFEfnyhYWxz/gq77EFmPWn9y8FBSX5+k77L+DvktxW/tM4+pTFRhLy/AsGConsX
+# HRWJjXD+57XQKBqJC4822rpM+Zv/Cuk0+CQ1ZyvgDbjmjJnW4SLq8CdCPSWU5nR0
+# W2rRnj7tfqAxM328y+l7vzhwRNGQ8cirOoo6CGJ/2XBjU02N7oJtpQUQwXEGahC0
+# HVUzWLOhcGbyoYIDWDCCAkACAQEwggEBoYHZpIHWMIHTMQswCQYDVQQGEwJVUzET
+# MBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMV
+# TWljcm9zb2Z0IENvcnBvcmF0aW9uMS0wKwYDVQQLEyRNaWNyb3NvZnQgSXJlbGFu
+# ZCBPcGVyYXRpb25zIExpbWl0ZWQxJzAlBgNVBAsTHm5TaGllbGQgVFNTIEVTTjo0
+# QzFBLTA1RTAtRDk0NzElMCMGA1UEAxMcTWljcm9zb2Z0IFRpbWUtU3RhbXAgU2Vy
+# dmljZaIjCgEBMAcGBSsOAwIaAxUAVSn9cWqexOj7PU+4ciWVvBEIvEqggYMwgYCk
+# fjB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
+# UmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENvcnBvcmF0aW9uMSYwJAYDVQQD
+# Ex1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAxMDANBgkqhkiG9w0BAQsFAAIF
+# AO6dyxMwIhgPMjAyNjExMTAxNjU1NDdaGA8yMDI2MTExMTE2NTU0N1owdjA8Bgor
+# BgEEAYRZCgQBMS4wLDAKAgUA7p3LEwIBADAJAgEAAgE+AgH/MAcCAQACAg4LMAoC
+# BQDunxyTAgEAMDYGCisGAQQBhFkKBAIxKDAmMAwGCisGAQQBhFkKAwKgCjAIAgEA
+# AgMHoSChCjAIAgEAAgMBhqAwDQYJKoZIhvcNAQELBQADggEBAEjRetGLK52E0Arh
+# 5NgRu1IRRxpXCU0WHip9mnE8IxBoE90gNDWYmKnlxE5UjhjaLMH2qWOhqblTerll
+# +Th2cnTve/m2RUJNMw0MTQhZwUCgS7HR7WOE/XaWU6SfEsBE4fJDZjEyFy/f6aLk
+# 9KZ8DUv05274EzgpoI3if0yqP9OKa4MFbBmqx7GvNCbHvkQrY2efhSqHEmrKKmuH
+# mHkZ9pzrYBxoHu2EFAdxxJIbDyehVNqwYnKRL6Xb9BXDtI/Ck9nYSjyQhxJ/eUE+
+# EY5UhDoFiRH55SUXS0bt59oWUiYHe1o0sgN1lgevohOVkEOSE9twAiMGA23BfiU7
+# vZIMQBwxggQNMIIECQIBATCBkzB8MQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2Fz
+# aGluZ3RvbjEQMA4GA1UEBxMHUmVkbW9uZDEeMBwGA1UEChMVTWljcm9zb2Z0IENv
+# cnBvcmF0aW9uMSYwJAYDVQQDEx1NaWNyb3NvZnQgVGltZS1TdGFtcCBQQ0EgMjAx
+# MAITMwAAAjRToWeU4bwYRwABAAACNDANBglghkgBZQMEAgEFAKCCAUowGgYJKoZI
+# hvcNAQkDMQ0GCyqGSIb3DQEJEAEEMC8GCSqGSIb3DQEJBDEiBCCCU6h8oqAMbOjn
+# N/1b7Y736pgJAKHnajAZp+otqU//7zCB+gYLKoZIhvcNAQkQAi8xgeowgecwgeQw
+# gb0EIEP8vaFTrZ57k68AJbxWZVFsJJJaR2PAsnkp3dl7KFFkMIGYMIGApH4wfDEL
+# MAkGA1UEBhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1JlZG1v
+# bmQxHjAcBgNVBAoTFU1pY3Jvc29mdCBDb3Jwb3JhdGlvbjEmMCQGA1UEAxMdTWlj
+# cm9zb2Z0IFRpbWUtU3RhbXAgUENBIDIwMTACEzMAAAI0U6FnlOG8GEcAAQAAAjQw
+# IgQgRtdk+GmoeISmhaYPH3pvOVGfNlejr897+pfYmC8sNpAwDQYJKoZIhvcNAQEL
+# BQAEggIAvlWGhoGEZE4XJsN/CDgfthJ5CGtkk4GnXLPRjWjhyWwzGzb+AUXJPV0S
+# QpC9qXSl3xHCZMuyjItIT03krmQdu80qpho6wEUKaEjzSM7r7abE3RLFDksrbbTz
+# uoELmvF5CZ1Lwe95/F0n/+NanOYMCrwUBpCveZmNwDNnTqvof3luaEHhYGzA5F21
+# gef5qSvG63cpprf4R+V5LinfM8/oJQy3d9Dwc3Z5n9CprtKhbtMXawQtceZj1NVx
+# BUJwbHr1731CcrgLHZ3d7ut2GuVgK0l9VgDfDvjVfw2CVjOBF32jcrUPSHGV/e38
+# asX8UBlIhPMNDVthhqubYfaajvpn/pXhtIrorxKPpiaj5fHcry9CAd7gIe9HswZl
+# U2s6xX3OTzVP0Rp3fvkfreLvW2w/JP+ZK+xgWETz+DXjIMwchx5mwe1+sUzyKeND
+# h8ysceC60fXlNV5mqsbmmjffU3J5mVw4efO4e1vIG866mxM1nWCRn0gf3QxYi7Pc
+# ll8meXOXrSpH3NqvecU2Fu0fe+BBZNSlW/QnnWQ3IRzvPftDA21Xi2xgtrC8m13Q
+# 8oxVU8AguA+W3x9O8uk3XEdXKU4QmRePsVE20JVurt8fO64l86L35Q1Dq1q1hEEe
+# pSQPP8QntnONTC25XmcBQhKQjcnnJXWLZ8MNTMRNtD/XPrvgbsk=
+# SIG # End signature block
